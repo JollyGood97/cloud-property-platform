@@ -131,6 +131,11 @@ jobs:
 
             echo "Deployment complete! Traffic now on $SWITCH_TO"
 
+            # Deploy monitoring (Prometheus + Grafana)
+            echo "Deploying monitoring stack..."
+            cd ~/plot-services/k8s
+            sudo k3s kubectl apply -f 10-prometheus-grafana.yaml
+
             # Show status
             sudo k3s kubectl get pods -n plot-listing
             sudo k3s kubectl get svc -n plot-listing
