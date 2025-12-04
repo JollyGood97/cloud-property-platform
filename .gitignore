@@ -17,6 +17,7 @@ dist/
 build/
 .pytest_cache/
 *.db
+test_*_temp.db
 
 # IDE
 .vscode/

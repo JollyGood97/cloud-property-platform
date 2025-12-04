@@ -2,6 +2,7 @@
 Tests for Inquiry Service
 """
 import pytest
+import os
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -9,13 +10,21 @@ from sqlalchemy.orm import sessionmaker
 from main import app
 from database import Base, get_db
 
-# Test database (in-memory for fresh state each run)
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# Use file-based SQLite for testing but delete it first
+TEST_DB = "test_inquiries_temp.db"
+if os.path.exists(TEST_DB):
+    os.remove(TEST_DB)
+
+SQLALCHEMY_DATABASE_URL = f"sqlite:///./{TEST_DB}"
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=None  # Disable connection pooling for SQLite
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base.metadata.drop_all(bind=engine)  # Drop existing tables
-Base.metadata.create_all(bind=engine)  # Create fresh tables
+# Create test database tables
+Base.metadata.create_all(bind=engine)
 
 
 def override_get_db():
@@ -28,6 +37,14 @@ def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup():
+    """Cleanup test database after all tests"""
+    yield
+    if os.path.exists(TEST_DB):
+        os.remove(TEST_DB)
 
 
 def test_health_check():
