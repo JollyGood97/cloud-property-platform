@@ -65,11 +65,11 @@ data:
     scrape_configs:
       - job_name: 'prometheus'
         static_configs:
-        - targets: ['localhost:9090']
+        - targets: ['prometheus.plot-listing.svc.cluster.local:9090']
       
       - job_name: 'grafana'
         static_configs:
-        - targets: ['grafana:3000']
+        - targets: ['grafana.plot-listing.svc.cluster.local:3000']
 ---
 # Grafana Deployment
 apiVersion: apps/v1
@@ -97,6 +97,8 @@ spec:
               value: "admin123"
             - name: GF_USERS_ALLOW_SIGN_UP
               value: "false"
+            - name: GF_METRICS_ENABLED
+              value: "true"
           resources:
             requests:
               memory: "256Mi"
