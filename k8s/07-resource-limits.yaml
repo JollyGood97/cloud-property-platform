@@ -1,3 +1,6 @@
+# @format
+---
+# Resource Quota for plot-listing namespace
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -5,12 +8,14 @@ metadata:
   namespace: plot-listing
 spec:
   hard:
-    requests.cpu: "2"
-    requests.memory: 2Gi
-    limits.cpu: "4"
-    limits.memory: 4Gi
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 8Gi
     persistentvolumeclaims: "5"
+    services.loadbalancers: "2"
 ---
+# Limit Range for default resource limits
 apiVersion: v1
 kind: LimitRange
 metadata:
@@ -18,16 +23,16 @@ metadata:
   namespace: plot-listing
 spec:
   limits:
-  - max:
-      cpu: "1"
-      memory: 1Gi
-    min:
-      cpu: "50m"
-      memory: 32Mi
-    default:
-      cpu: "200m"
-      memory: 256Mi
-    defaultRequest:
-      cpu: "100m"
-      memory: 128Mi
-    type: Container
+    - max:
+        cpu: "2"
+        memory: 2Gi
+      min:
+        cpu: "50m"
+        memory: 32Mi
+      default:
+        cpu: "200m"
+        memory: 256Mi
+      defaultRequest:
+        cpu: "100m"
+        memory: 128Mi
+      type: Container

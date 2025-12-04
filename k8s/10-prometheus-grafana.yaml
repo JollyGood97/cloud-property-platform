@@ -63,16 +63,13 @@ data:
       scrape_interval: 15s
 
     scrape_configs:
-      - job_name: 'kubernetes-pods'
-        kubernetes_sd_configs:
-        - role: pod
-          namespaces:
-            names:
-            - plot-listing
-        relabel_configs:
-        - source_labels: [__meta_kubernetes_pod_label_app]
-          action: keep
-          regex: (listing-service|inquiry-service|frontend)
+      - job_name: 'prometheus'
+        static_configs:
+        - targets: ['localhost:9090']
+      
+      - job_name: 'grafana'
+        static_configs:
+        - targets: ['grafana:3000']
 ---
 # Grafana Deployment
 apiVersion: apps/v1
