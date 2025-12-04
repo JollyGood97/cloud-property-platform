@@ -28,7 +28,7 @@ spec:
             [
               "sh",
               "-c",
-              "until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done;",
+              "until nc -z postgres-service 5432; do echo waiting for postgres; sleep 2; done;",
             ]
       containers:
         - name: listing-service
@@ -37,7 +37,7 @@ spec:
             - containerPort: 8000
           env:
             - name: DATABASE_URL
-              value: "postgresql://plotuser:plotpass123@postgres:5432/listings_db"
+              value: "postgresql://plotuser:plotpass123@postgres-service:5432/listings_db"
           resources:
             requests:
               memory: "128Mi"
@@ -87,7 +87,7 @@ spec:
             [
               "sh",
               "-c",
-              "until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done;",
+              "until nc -z postgres-service 5432; do echo waiting for postgres; sleep 2; done;",
             ]
       containers:
         - name: listing-service
@@ -96,7 +96,7 @@ spec:
             - containerPort: 8000
           env:
             - name: DATABASE_URL
-              value: "postgresql://plotuser:plotpass123@postgres:5432/listings_db"
+              value: "postgresql://plotuser:plotpass123@postgres-service:5432/listings_db"
           resources:
             requests:
               memory: "128Mi"
