@@ -9,12 +9,13 @@ from sqlalchemy.orm import sessionmaker
 from main import app
 from database import Base, get_db
 
-# Test database
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_inquiries.db"
+# Test database (in-memory for fresh state each run)
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base.metadata.create_all(bind=engine)
+Base.metadata.drop_all(bind=engine)  # Drop existing tables
+Base.metadata.create_all(bind=engine)  # Create fresh tables
 
 
 def override_get_db():
