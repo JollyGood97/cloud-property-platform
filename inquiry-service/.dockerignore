@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+*.db
+*.db-journal
+
+# Testing
+.pytest_cache/
+test_*.db
+
+# Environment
+.env

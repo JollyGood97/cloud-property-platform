@@ -1,0 +1,49 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: plot-listing-ingress
+  namespace: plot-listing
+  annotations:
+    kubernetes.io/ingress.class: "traefik"  # K3s uses Traefik by default
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  rules:
+  - host: plot-listing.local  # You can use localhost or configure /etc/hosts
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
+      - path: /api/listings
+        pathType: Prefix
+        backend:
+          service:
+            name: listing-service
+            port:
+              number: 8000
+      - path: /api/inquiries
+        pathType: Prefix
+        backend:
+          service:
+            name: inquiry-service
+            port:
+              number: 8001
+---
+# Alternative: Simple LoadBalancer for local testing
+apiVersion: v1
+kind: Service
+metadata:
+  name: plot-listing-lb
+  namespace: plot-listing
+spec:
+  type: LoadBalancer
+  selector:
+    app: frontend
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http

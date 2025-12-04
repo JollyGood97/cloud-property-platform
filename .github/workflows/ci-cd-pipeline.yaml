@@ -1,0 +1,136 @@
+# @format
+
+name: Cloud Property Platform CI/CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  LISTING_IMAGE: jollygood97/listing-service
+  INQUIRY_IMAGE: jollygood97/inquiry-service
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Test Listing Service
+        run: |
+          cd listing-service
+          pip install -r requirements.txt
+          pytest test_main.py -v
+
+      - name: Test Inquiry Service
+        run: |
+          cd inquiry-service
+          pip install -r requirements.txt
+          pytest test_main.py -v
+
+  build:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Listing Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./listing-service
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.LISTING_IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ env.LISTING_IMAGE }}:${{ github.sha }}
+
+      - name: Build and push Inquiry Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./inquiry-service
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.INQUIRY_IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ env.INQUIRY_IMAGE }}:${{ github.sha }}
+
+  deploy:
+    name: Blue-Green Deployment to EC2
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/plot-services
+
+            # Pull latest code
+            git pull origin main || true
+
+            # Determine current active environment
+            CURRENT=$(sudo k3s kubectl get svc listing-service -n plot-listing -o jsonpath='{.spec.selector.version}' 2>/dev/null || echo "none")
+
+            if [ "$CURRENT" == "blue" ] || [ "$CURRENT" == "none" ]; then
+              DEPLOY_TO="green"
+              SWITCH_TO="green"
+            else
+              DEPLOY_TO="blue"
+              SWITCH_TO="blue"
+            fi
+
+            echo "Current active: $CURRENT"
+            echo "Deploying to: $DEPLOY_TO"
+
+            # Update image references in blue-green manifests
+            cd k8s/blue-green
+            sed -i "s|image:.*listing-service.*|image: ghcr.io/jollygood97/listing-service:${{ github.sha }}|g" listing-service-blue-green.yaml
+            sed -i "s|image:.*inquiry-service.*|image: ghcr.io/jollygood97/inquiry-service:${{ github.sha }}|g" inquiry-service-blue-green.yaml
+
+            # Deploy blue-green manifests
+            sudo k3s kubectl apply -f listing-service-blue-green.yaml
+            sudo k3s kubectl apply -f inquiry-service-blue-green.yaml
+
+            # Wait for new deployment to be ready
+            echo "Waiting for $DEPLOY_TO deployment..."
+            sudo k3s kubectl rollout status deployment/listing-service-$DEPLOY_TO -n plot-listing --timeout=5m
+            sudo k3s kubectl rollout status deployment/inquiry-service-$DEPLOY_TO -n plot-listing --timeout=5m
+
+            # Switch traffic to new deployment
+            echo "Switching traffic to $SWITCH_TO..."
+            sudo k3s kubectl patch service listing-service -n plot-listing -p "{\"spec\":{\"selector\":{\"version\":\"$SWITCH_TO\"}}}"
+            sudo k3s kubectl patch service inquiry-service -n plot-listing -p "{\"spec\":{\"selector\":{\"version\":\"$SWITCH_TO\"}}}"
+
+            echo "Deployment complete! Traffic now on $SWITCH_TO"
+
+            # Show status
+            sudo k3s kubectl get pods -n plot-listing
+            sudo k3s kubectl get svc -n plot-listing

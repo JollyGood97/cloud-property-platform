@@ -1,0 +1,134 @@
+# @format
+---
+# Blue Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: listing-service-blue
+  namespace: plot-listing
+  labels:
+    app: listing-service
+    version: blue
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: listing-service
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: listing-service
+        version: blue
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.35
+          command:
+            [
+              "sh",
+              "-c",
+              "until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done;",
+            ]
+      containers:
+        - name: listing-service
+          image: ghcr.io/jollygood97/listing-service:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://plotuser:plotpass123@postgres:5432/listings_db"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+---
+# Green Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: listing-service-green
+  namespace: plot-listing
+  labels:
+    app: listing-service
+    version: green
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: listing-service
+      version: green
+  template:
+    metadata:
+      labels:
+        app: listing-service
+        version: green
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.35
+          command:
+            [
+              "sh",
+              "-c",
+              "until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done;",
+            ]
+      containers:
+        - name: listing-service
+          image: ghcr.io/jollygood97/listing-service:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://plotuser:plotpass123@postgres:5432/listings_db"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+---
+# Service (can switch between blue and green)
+apiVersion: v1
+kind: Service
+metadata:
+  name: listing-service
+  namespace: plot-listing
+spec:
+  selector:
+    app: listing-service
+    version: blue # Change to 'green' to switch traffic
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP

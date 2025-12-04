@@ -1,0 +1,13 @@
+{
+  "fileLocations": [
+    {
+      "URIPrefixes": [
+        "s3://posthog-exports-semini/events/"
+      ]
+    }
+  ],
+  "globalUploadSettings": {
+    "format": "JSON"
+  }
+}
+
