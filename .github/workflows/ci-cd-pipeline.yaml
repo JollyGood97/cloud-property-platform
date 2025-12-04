@@ -93,8 +93,15 @@ jobs:
           script: |
             cd ~/plot-services
 
-            # Pull latest code
-            git pull origin main || true
+            # Pull latest code (or clone if not exists)
+            if [ -d ".git" ]; then
+              git pull origin main || true
+            else
+              cd ~
+              rm -rf plot-services
+              git clone https://github.com/JollyGood97/cloud-property-platform.git plot-services
+              cd plot-services
+            fi
 
             # Determine current active environment
             CURRENT=$(sudo k3s kubectl get svc listing-service -n plot-listing -o jsonpath='{.spec.selector.version}' 2>/dev/null || echo "none")
